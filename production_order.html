@@ -22,14 +22,11 @@ body{font-family:'Sarabun',sans-serif;background:#f5f5f0;color:#1a1a2e;font-size
 .card-head h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .card-body{padding:18px 16px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 24px}
-.grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px 10px}
-.grid6 .span3{grid-column:span 3}
-.grid6 .span6{grid-column:span 6}
-.span2{grid-column:span 2}
-.span3{grid-column:span 3}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 10px}
+.dim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px}
+.dim-full{grid-column:1/-1}
 /* prevent grid overflow */
-.grid2>*,.grid3>*,.grid6>*{min-width:0}
+.grid2>*,.grid3>*,.dim-grid>*{min-width:0}
 .field input,.field textarea,.field select{width:100%}
 
 /* ── Fields ── */
@@ -117,18 +114,18 @@ input[type=file]{display:none}
   border:1px solid #ffcdd2;border-radius:8px;
   padding:10px 14px;margin-top:12px;font-size:13px;text-align:left
 }
-@media (max-width: 680px) {
+@media (max-width: 640px) {
   .body{padding:12px 14px 32px}
+  .page-header{padding:16px 16px 12px}
   .grid2{grid-template-columns:1fr}
-  .grid6{grid-template-columns:1fr 1fr}
-  .span2,.span3,.span6{grid-column:span 2}
+  .grid3{grid-template-columns:1fr 1fr}
+  .dim-grid{grid-template-columns:1fr 1fr}
   .drawing-grid{grid-template-columns:1fr 1fr}
   .dslot.perspective{grid-column:span 2}
-  .page-header{padding:16px 16px 12px}
 }
-@media (max-width: 420px) {
-  .grid6{grid-template-columns:1fr}
-  .span2,.span3,.span6{grid-column:span 1}
+@media (max-width: 400px) {
+  .dim-grid{grid-template-columns:1fr}
+  .grid3{grid-template-columns:1fr}
 }
 .reset-btn{
   background:none;border:none;color:#888;font-family:inherit;
@@ -217,14 +214,14 @@ input[type=file]{display:none}
   <div class="card">
     <div class="card-head"><h2>Dimensions &amp; Physical</h2></div>
     <div class="card-body">
-      <div class="grid6">
-        <div class="field span2"><label>Width (mm)</label><input id="width" type="number" min="0"></div>
-        <div class="field span2"><label>Length (mm)</label><input id="length" type="number" min="0"></div>
-        <div class="field span2"><label>Height (mm)</label><input id="height" type="number" min="0"></div>
-        <div class="field span2"><label>Diameter (mm)</label><input id="diameter" type="number" min="0"></div>
-        <div class="field span2"><label>Target Weight (g)</label><input id="target_weight" type="number" min="0"></div>
-        <div class="field span2"><label>Tolerance (±mm)</label><input id="tolerance" placeholder="เช่น 1.5"></div>
-        <div class="field span6">
+      <div class="dim-grid">
+        <div class="field"><label>Width (mm)</label><input id="width" type="number" min="0"></div>
+        <div class="field"><label>Length (mm)</label><input id="length" type="number" min="0"></div>
+        <div class="field"><label>Height (mm)</label><input id="height" type="number" min="0"></div>
+        <div class="field"><label>Diameter (mm)</label><input id="diameter" type="number" min="0"></div>
+        <div class="field"><label>Target Weight (g)</label><input id="target_weight" type="number" min="0"></div>
+        <div class="field"><label>Tolerance (±mm)</label><input id="tolerance" placeholder="เช่น 1.5"></div>
+        <div class="field dim-full">
           <label>Size Flexibility</label>
           <input id="size_flexibility" placeholder="เช่น ยืดหยุ่นได้ ±5mm ในแนวกว้าง">
         </div>
@@ -297,7 +294,7 @@ input[type=file]{display:none}
         </div>
         <div class="field"><label>Target Start Date</label><input type="date" id="target_start_date"></div>
         <div class="field"><label>Target Completion Date</label><input type="date" id="target_completion_date"></div>
-<div class="field span2"><label>Packaging Requirement</label><input id="packaging_requirement"></div>
+<div class="field" style="grid-column:1/-1"><label>Packaging Requirement</label><input id="packaging_requirement"></div>
       </div>
     </div>
   </div>
