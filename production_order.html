@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Production Order - Mergee Atelier</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#f5f5f0;color:#1a1a2e;font-size:15px;min-height:100vh}
+
+/* ── Header ── */
+.page-header{padding:20px 28px 16px;background:#1a1a2e;color:#fff}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:4px}
+.page-header h1{font-size:22px;font-weight:700}
+.pid-badge{display:inline-block;background:rgba(181,134,42,.22);border:1px solid rgba(181,134,42,.45);color:#f0d080;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:8px;letter-spacing:.06em}
+
+/* ── Layout ── */
+.body{padding:20px 28px 40px;max-width:780px;margin:0 auto}
+.card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;overflow:hidden;margin-bottom:16px}
+.card-head{padding:10px 16px;background:#1a1a2e;color:#fff}
+.card-head h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.card-body{padding:18px 16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 24px}
+.grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px 10px}
+.grid6 .span3{grid-column:span 3}
+.grid6 .span6{grid-column:span 6}
+.span2{grid-column:span 2}
+.span3{grid-column:span 3}
+
+/* ── Fields ── */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:10.5px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em}
+.field input,.field textarea,.field select{
+  border:1.5px solid #e0e0e0;border-radius:8px;padding:9px 12px;
+  font-family:inherit;font-size:14px;color:#1a1a2e;background:#fafafa;
+  transition:border-color .15s,background .15s
+}
+.field input:focus,.field textarea:focus,.field select:focus{
+  outline:none;border-color:#b5862a;background:#fff
+}
+.field input[readonly]{background:#f0f0f8;color:#1a1a2e;cursor:default}
+.field input[readonly]#production_id{color:#3d5af1;font-weight:700}
+.field input[readonly].looking{color:#aaa;font-style:italic}
+.field input[readonly].found{background:#f0f0f8}
+.field textarea{resize:vertical;min-height:58px}
+.hint{font-size:11px;color:#aaa;margin-top:2px}
+
+/* ── Drawing grid ── */
+.drawing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dslot{
+  border:1.5px dashed #d0d0d0;border-radius:10px;overflow:hidden;
+  cursor:pointer;background:#fafafa;position:relative;
+  transition:border-color .15s,background .15s
+}
+.dslot:hover{border-color:#b5862a;background:#fffdf7}
+.dslot.has-img{border-style:solid;border-color:#b5862a;background:#fff}
+.dslot.perspective{grid-column:span 3;height:190px}
+.dslot.normal{height:140px}
+.dlabel{
+  font-size:9.5px;font-weight:700;color:#aaa;
+  padding:5px 10px;background:#f5f5f5;
+  border-bottom:1px solid #eee;letter-spacing:.04em;text-transform:uppercase
+}
+.dslot.has-img .dlabel{color:#b5862a;background:#fdf8ee;border-bottom-color:#f0e8d5}
+.dpreview{
+  width:100%;height:calc(100% - 29px);
+  display:flex;align-items:center;justify-content:center;padding:8px
+}
+.dpreview img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px}
+.placeholder{font-size:11px;color:#ccc;text-align:center;line-height:1.7}
+.placeholder .icon{font-size:22px;display:block;margin-bottom:3px}
+.clear-btn{
+  position:absolute;top:5px;right:5px;
+  width:22px;height:22px;
+  background:rgba(26,26,46,.55);color:#fff;
+  border:none;border-radius:50%;font-size:13px;
+  cursor:pointer;display:none;align-items:center;justify-content:center;
+  line-height:1;z-index:2
+}
+.dslot.has-img .clear-btn{display:flex}
+input[type=file]{display:none}
+
+/* ── Buttons ── */
+.btn-primary{
+  background:#1a1a2e;color:#fff;border:none;border-radius:10px;
+  padding:14px 40px;font-family:inherit;font-size:15px;font-weight:700;
+  cursor:pointer;transition:background .2s,transform .1s
+}
+.btn-primary:hover{background:#2d2d52}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{background:#bbb;cursor:not-allowed;transform:none}
+
+/* ── Result / Error ── */
+.submit-area{text-align:center;padding:24px 0 8px}
+.loading{display:none;font-size:13px;color:#888;margin-top:12px}
+.loading span{display:inline-block;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.result-card{
+  display:none;background:#fff;
+  border:2px solid #4caf50;border-radius:12px;
+  padding:22px 24px;text-align:center;margin-top:16px
+}
+.result-card h3{color:#2e7d32;font-size:17px;margin-bottom:6px}
+.result-card .sub{font-size:13px;color:#666;margin-bottom:14px}
+.pdf-link{
+  display:inline-block;background:#1a1a2e;color:#fff;
+  text-decoration:none;border-radius:8px;padding:10px 24px;
+  font-size:14px;font-weight:700
+}
+.error-msg{
+  display:none;color:#c62828;background:#fff3f3;
+  border:1px solid #ffcdd2;border-radius:8px;
+  padding:10px 14px;margin-top:12px;font-size:13px;text-align:left
+}
+@media (max-width: 520px) {
+  .body{padding:12px 14px 32px}
+  .grid2,.grid6{grid-template-columns:1fr}
+  .span2,.span3,.span6{grid-column:span 1}
+  .drawing-grid{grid-template-columns:1fr 1fr}
+  .dslot.perspective{grid-column:span 2}
+  .page-header{padding:16px 16px 12px}
+}
+.reset-btn{
+  background:none;border:none;color:#888;font-family:inherit;
+  font-size:13px;cursor:pointer;margin-top:12px;text-decoration:underline
+}
+.db-slot-badge{
+  font-size:10px;color:#b5862a;font-weight:700;
+  text-align:center;padding:4px 6px;
+}
+.db-slot-badge a{color:#b5862a}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="eyebrow">Mergee Atelier</div>
+  <h1>Production Order</h1>
+  <div class="pid-badge" id="pid-badge">กำลังโหลด…</div>
+</div>
+
+<div class="body">
+
+  <!-- PROJECT INFO -->
+  <div class="card">
+    <div class="card-head"><h2>Project Info</h2></div>
+    <div class="card-body">
+      <div class="grid2">
+        <div class="field">
+          <label>Production ID</label>
+          <input id="production_id" readonly placeholder="กำลังโหลด…">
+        </div>
+        <div class="field">
+          <label>วันที่สั่งผลิต</label>
+          <input type="date" id="order_date">
+        </div>
+        <div class="field">
+          <label>Project ID</label>
+          <input id="project_id" placeholder="PJYYYYMMDD01" oninput="onProjectIdChange()" onblur="lookupProject()">
+        </div>
+        <div class="field">
+          <label>Project Name</label>
+          <input id="project_name" readonly placeholder="— ดึงจาก Project ID —">
+        </div>
+        <div class="field span2">
+          <label>Client / Company</label>
+          <input id="client" readonly placeholder="— ดึงจาก Project ID —">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT IDENTITY -->
+  <div class="card">
+    <div class="card-head"><h2>Product Identity</h2></div>
+    <div class="card-body">
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="field">
+          <label>SKU</label>
+          <input id="sku" placeholder="เช่น ACC-2026-001" oninput="onSKUChange()" onblur="lookupSKU()">
+        </div>
+        <div class="field">
+          <label>Product Name</label>
+          <input id="product_name" placeholder="กรอกหากยังไม่มีใน SKU">
+        </div>
+      </div>
+      <div id="sku-new-banner" style="display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#5d4037">
+        ⚠️ ไม่พบ SKU นี้ในระบบ — กรอกข้อมูลด้านล่างแล้วกด <b>"สร้าง Production Order"</b> ระบบจะบันทึก SKU ใหม่พร้อมกันอัตโนมัติ
+      </div>
+      <div id="sku-found-banner" style="display:none;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#1b5e20">
+        ✅ ดึงข้อมูลจาก Products catalog เรียบร้อย — แก้ไขได้หากต้องการ
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Details</label>
+          <textarea id="details" rows="2" placeholder="รายละเอียดสินค้า"></textarea>
+        </div>
+        <div class="field">
+          <label>Use Environment</label>
+          <input id="use_environment" placeholder="เช่น ใช้กลางแจ้ง, ในบ้าน">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIMENSIONS -->
+  <div class="card">
+    <div class="card-head"><h2>Dimensions &amp; Physical</h2></div>
+    <div class="card-body">
+      <div class="grid6">
+        <div class="field span2"><label>Width (mm)</label><input id="width" type="number" min="0"></div>
+        <div class="field span2"><label>Length (mm)</label><input id="length" type="number" min="0"></div>
+        <div class="field span2"><label>Height (mm)</label><input id="height" type="number" min="0"></div>
+        <div class="field span2"><label>Diameter (mm)</label><input id="diameter" type="number" min="0"></div>
+        <div class="field span2"><label>Target Weight (g)</label><input id="target_weight" type="number" min="0"></div>
+        <div class="field span2"><label>Tolerance (±mm)</label><input id="tolerance" placeholder="เช่น 1.5"></div>
+        <div class="field span6">
+          <label>Size Flexibility</label>
+          <input id="size_flexibility" placeholder="เช่น ยืดหยุ่นได้ ±5mm ในแนวกว้าง">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATERIALS -->
+  <div class="card">
+    <div class="card-head"><h2>Materials</h2></div>
+    <div class="card-body">
+      <div class="grid2">
+        <div class="field"><label>Primary Material</label><input id="primary_material"></div>
+        <div class="field"><label>Secondary Material</label><input id="secondary_material"></div>
+        <div class="field"><label>Materials to Avoid</label><input id="materials_to_avoid"></div>
+        <div class="field"><label>Sourcing Note</label><input id="sourcing_note"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SURFACE & FINISH -->
+  <div class="card">
+    <div class="card-head"><h2>Surface &amp; Finish</h2></div>
+    <div class="card-body">
+      <div class="grid2">
+        <div class="field">
+          <label>Surface Finish</label>
+          <select id="surface_finish">
+            <option value="">— เลือก —</option>
+            <option>Matte</option>
+            <option>Gloss</option>
+            <option>Satin</option>
+            <option>Raw</option>
+            <option>Texture</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Color</label><input id="color"></div>
+        <div class="field"><label>Color to Avoid</label><input id="color_to_avoid"></div>
+        <div class="field"><label>Special Treatment</label><input id="special_treatment" placeholder="เช่น UV coating, anodizing"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTION -->
+  <div class="card">
+    <div class="card-head"><h2>Production</h2></div>
+    <div class="card-body">
+      <div class="grid2">
+        <div class="field"><label>Quantity (ชิ้น)</label><input id="quantity" type="number" min="1"></div>
+        <div class="field">
+          <label>Production Method</label>
+          <select id="production_method">
+            <option value="">— เลือก —</option>
+            <option>Hand-made</option>
+            <option>Semi</option>
+            <option>Mass</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Lead Time (วัน)</label><input id="lead_time" type="number" min="1"></div>
+        <div class="field">
+          <label>Priority</label>
+          <select id="priority">
+            <option value="">— เลือก —</option>
+            <option>High</option>
+            <option>Normal</option>
+            <option>Low</option>
+          </select>
+        </div>
+        <div class="field"><label>Target Start Date</label><input type="date" id="target_start_date"></div>
+        <div class="field"><label>Target Completion Date</label><input type="date" id="target_completion_date"></div>
+<div class="field span2"><label>Packaging Requirement</label><input id="packaging_requirement"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STANDARDS -->
+  <div class="card">
+    <div class="card-head"><h2>Standards &amp; Compliance</h2></div>
+    <div class="card-body">
+      <div class="field">
+        <label>มาตรฐานที่ต้องผ่าน</label>
+        <textarea id="standards" rows="2" placeholder="เช่น มอก.xxx, CE, RoHS — ถ้าไม่มีเว้นว่างได้"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- REMARKS -->
+  <div class="card">
+    <div class="card-head"><h2>Remarks</h2></div>
+    <div class="card-body">
+      <div class="field">
+        <label>หมายเหตุ / ข้อมูลเพิ่มเติม</label>
+        <textarea id="remarks" rows="3" placeholder="ข้อมูลเพิ่มเติมอื่นๆ ที่ต้องการระบุ"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- TECHNICAL DRAWINGS -->
+  <div class="card">
+    <div class="card-head"><h2>Technical Drawing</h2></div>
+    <div class="card-body">
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="field">
+          <label>Scale</label>
+          <input id="scale" placeholder="เช่น 1:1, 1:2">
+        </div>
+      </div>
+      <p class="hint" style="margin-bottom:12px">คลิกที่ช่องเพื่ออัปโหลดรูป (PNG / JPG) — ไม่บังคับ</p>
+      <div class="drawing-grid">
+
+        <!-- Perspective (full width) -->
+        <div class="dslot perspective" id="slot-perspective" onclick="triggerUpload('perspective')">
+          <div class="dlabel">Perspective</div>
+          <div class="dpreview" id="prev-perspective">
+            <div class="placeholder"><span class="icon">📐</span>คลิกเพื่ออัปโหลด<br>มุมมอง Perspective</div>
+          </div>
+          <button class="clear-btn" onclick="clearSlot(event,'perspective')">✕</button>
+        </div>
+
+        <!-- Front View -->
+        <div class="dslot normal" id="slot-front" onclick="triggerUpload('front')">
+          <div class="dlabel">Front View</div>
+          <div class="dpreview" id="prev-front"><div class="placeholder">คลิกอัปโหลด</div></div>
+          <button class="clear-btn" onclick="clearSlot(event,'front')">✕</button>
+        </div>
+
+        <!-- Side View L -->
+        <div class="dslot normal" id="slot-side_l" onclick="triggerUpload('side_l')">
+          <div class="dlabel">Side View (L)</div>
+          <div class="dpreview" id="prev-side_l"><div class="placeholder">คลิกอัปโหลด</div></div>
+          <button class="clear-btn" onclick="clearSlot(event,'side_l')">✕</button>
+        </div>
+
+        <!-- Side View R -->
+        <div class="dslot normal" id="slot-side_r" onclick="triggerUpload('side_r')">
+          <div class="dlabel">Side View (R)</div>
+          <div class="dpreview" id="prev-side_r"><div class="placeholder">คลิกอัปโหลด</div></div>
+          <button class="clear-btn" onclick="clearSlot(event,'side_r')">✕</button>
+        </div>
+
+        <!-- Top View -->
+        <div class="dslot normal" id="slot-top" onclick="triggerUpload('top')">
+          <div class="dlabel">Top View</div>
+          <div class="dpreview" id="prev-top"><div class="placeholder">คลิกอัปโหลด</div></div>
+          <button class="clear-btn" onclick="clearSlot(event,'top')">✕</button>
+        </div>
+
+        <!-- Section View -->
+        <div class="dslot normal" id="slot-section" onclick="triggerUpload('section')">
+          <div class="dlabel">Section View</div>
+          <div class="dpreview" id="prev-section"><div class="placeholder">คลิกอัปโหลด</div></div>
+          <button class="clear-btn" onclick="clearSlot(event,'section')">✕</button>
+        </div>
+
+        <!-- Detail View -->
+        <div class="dslot normal" id="slot-detail" onclick="triggerUpload('detail')">
+          <div class="dlabel">Detail View</div>
+          <div class="dpreview" id="prev-detail"><div class="placeholder">คลิกอัปโหลด</div></div>
+          <button class="clear-btn" onclick="clearSlot(event,'detail')">✕</button>
+        </div>
+
+      </div>
+
+      <!-- Hidden file inputs -->
+      <input type="file" id="file-perspective" accept="image/*" onchange="handleFile('perspective',this)">
+      <input type="file" id="file-front"       accept="image/*" onchange="handleFile('front',this)">
+      <input type="file" id="file-side_l"      accept="image/*" onchange="handleFile('side_l',this)">
+      <input type="file" id="file-side_r"      accept="image/*" onchange="handleFile('side_r',this)">
+      <input type="file" id="file-top"         accept="image/*" onchange="handleFile('top',this)">
+      <input type="file" id="file-section"     accept="image/*" onchange="handleFile('section',this)">
+      <input type="file" id="file-detail"      accept="image/*" onchange="handleFile('detail',this)">
+    </div>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="submit-area">
+    <button class="btn-primary" id="submit-btn" onclick="submitForm()">
+      สร้าง Production Order &amp; PDF
+    </button>
+    <div class="loading" id="loading">
+      <span>กำลังอัปโหลดรูปและสร้าง PDF… อาจใช้เวลา 30–60 วินาที</span>
+    </div>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-card" id="result-card">
+    <h3>สร้าง Production Order เรียบร้อย</h3>
+    <div class="sub">Production ID: <b id="result-pid"></b></div>
+    <a class="pdf-link" id="pdf-link" href="#" target="_blank">📄 เปิด PDF</a>
+    <br>
+    <button class="reset-btn" onclick="resetForm()">สร้าง Order ใหม่</button>
+  </div>
+
+</div><!-- /body -->
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxeYliQGhs7qpPSWwQ4nBKczlFxuT0_isNaAWUX6zvqo0-Twa-NlgbCksYvJZhk_Etf/exec';
+
+// ── Project lookup ────────────────────────────────────────────────────────────
+let _lookupTimer = null;
+
+function onProjectIdChange() {
+  clearTimeout(_lookupTimer);
+  const pid = g('project_id');
+  const nameEl   = document.getElementById('project_name');
+  const clientEl = document.getElementById('client');
+  if (!pid) {
+    nameEl.value   = '';
+    clientEl.value = '';
+    nameEl.placeholder   = '— ดึงจาก Project ID —';
+    clientEl.placeholder = '— ดึงจาก Project ID —';
+    nameEl.classList.remove('looking','found');
+    clientEl.classList.remove('looking','found');
+  }
+}
+
+async function lookupProject() {
+  const pid = g('project_id');
+  if (!pid) return;
+  const nameEl   = document.getElementById('project_name');
+  const clientEl = document.getElementById('client');
+
+  nameEl.value          = '';
+  clientEl.value        = '';
+  nameEl.placeholder    = 'กำลังค้นหา…';
+  clientEl.placeholder  = 'กำลังค้นหา…';
+  nameEl.classList.add('looking');
+  clientEl.classList.add('looking');
+
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=project&id=' + encodeURIComponent(pid));
+    const json = await res.json();
+    nameEl.classList.remove('looking');
+    clientEl.classList.remove('looking');
+    if (json.found) {
+      nameEl.value   = json.project_name || '';
+      clientEl.value = json.company      || '';
+      nameEl.classList.add('found');
+      clientEl.classList.add('found');
+      nameEl.placeholder   = '';
+      clientEl.placeholder = '';
+    } else {
+      nameEl.placeholder   = '— ไม่พบ Project ID นี้ —';
+      clientEl.placeholder = '— ไม่พบ Project ID นี้ —';
+    }
+  } catch(e) {
+    nameEl.classList.remove('looking');
+    clientEl.classList.remove('looking');
+    nameEl.placeholder   = '— เชื่อมต่อไม่ได้ —';
+    clientEl.placeholder = '— เชื่อมต่อไม่ได้ —';
+  }
+}
+
+// ── SKU state ─────────────────────────────────────────────────────────────────
+let skuDBData = null; // null = not found / not searched; object = found data
+
+function onSKUChange() {
+  if (!g('sku')) {
+    clearSKUState();
+  }
+}
+
+function clearSKUState() {
+  skuDBData = null;
+  document.getElementById('sku-new-banner').style.display   = 'none';
+  document.getElementById('sku-found-banner').style.display = 'none';
+}
+
+// Fields that get pre-filled from Products catalog
+const SKU_FILL_FIELDS = [
+  'product_name','details','use_environment',
+  'width','length','height','diameter','target_weight','size_flexibility','tolerance',
+  'primary_material','secondary_material','materials_to_avoid','sourcing_note',
+  'surface_finish','color','color_to_avoid','special_treatment','standards','remarks'
+];
+
+const DRAWING_KEYS_HTML = ['perspective','front','side_l','side_r','top','section','detail'];
+
+async function lookupSKU() {
+  const sku = g('sku');
+  if (!sku) return;
+  clearSKUState();
+
+  document.getElementById('product_name').placeholder = 'กำลังค้นหา…';
+
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=sku&id=' + encodeURIComponent(sku));
+    const json = await res.json();
+
+    document.getElementById('product_name').placeholder = 'กรอกหากยังไม่มีใน SKU';
+
+    if (json.found) {
+      skuDBData = json;
+      // Pre-fill all matching fields
+      SKU_FILL_FIELDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && json[id] !== undefined) el.value = json[id];
+      });
+      // Pre-fill drawings (show DB badge, store URL for submission)
+      DRAWING_KEYS_HTML.forEach(key => {
+        const url = json['drawing_' + key];
+        if (url) showDBDrawingSlot(key, url);
+      });
+      document.getElementById('sku-found-banner').style.display = 'block';
+    } else {
+      // New SKU — show save button
+      document.getElementById('sku-new-banner').style.display  = 'block';
+    }
+  } catch(e) {
+    document.getElementById('product_name').placeholder = '— เชื่อมต่อไม่ได้ —';
+  }
+}
+
+// Store URLs for reuse (keyed by drawing key)
+const drawingDBUrls = {};
+
+function showDBDrawingSlot(key, url) {
+  drawingDBUrls[key] = url;
+  const slot = document.getElementById('slot-' + key);
+  const prev = document.getElementById('prev-' + key);
+  slot.classList.add('has-img');
+  prev.innerHTML = `<div class="db-slot-badge">
+    📎 มีรูปในฐานข้อมูล<br>
+    <a href="${url}" target="_blank" onclick="event.stopPropagation()">ดูรูป</a>
+    &nbsp;·&nbsp; <span style="color:#888;cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();replaceDBSlot('${key}')">เปลี่ยน</span>
+  </div>`;
+}
+
+function replaceDBSlot(key) {
+  delete drawingDBUrls[key];
+  const slot = document.getElementById('slot-' + key);
+  const prev = document.getElementById('prev-' + key);
+  slot.classList.remove('has-img');
+  prev.innerHTML = '<div class="placeholder">คลิกอัปโหลด</div>';
+  triggerUpload(key);
+}
+
+
+// ── Drawing state ─────────────────────────────────────────────────────────────
+const drawingData = {}; // key → full base64 data URL
+
+// ── On load ───────────────────────────────────────────────────────────────────
+(async function init() {
+  // Set today's date
+  const today = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('order_date').value =
+    today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+
+  // Fetch next Production ID
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=nextpdid');
+    const json = await res.json();
+    const id   = json.id || '';
+    document.getElementById('production_id').value = id;
+    document.getElementById('pid-badge').textContent = id || 'Production ID';
+  } catch (e) {
+    document.getElementById('pid-badge').textContent = 'โหลดไม่ได้ — refresh ใหม่';
+    console.error('nextpdid error:', e);
+  }
+})();
+
+// ── Image upload ──────────────────────────────────────────────────────────────
+function triggerUpload(key) {
+  document.getElementById('file-' + key).click();
+}
+
+function handleFile(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const b64 = e.target.result;
+    drawingData[key] = b64;
+    document.getElementById('slot-' + key).classList.add('has-img');
+    document.getElementById('prev-' + key).innerHTML =
+      '<img src="' + b64 + '" alt="' + key + '">';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearSlot(evt, key) {
+  evt.stopPropagation();
+  delete drawingData[key];
+  const slot = document.getElementById('slot-' + key);
+  slot.classList.remove('has-img');
+  const placeholders = {
+    perspective: '<span class="icon">📐</span>คลิกเพื่ออัปโหลด<br>มุมมอง Perspective'
+  };
+  document.getElementById('prev-' + key).innerHTML =
+    '<div class="placeholder">' + (placeholders[key] || 'คลิกอัปโหลด') + '</div>';
+  document.getElementById('file-' + key).value = '';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function g(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitForm() {
+  const prodId = g('production_id');
+  if (!prodId) {
+    alert('ไม่พบ Production ID — กรุณา refresh หน้าและลองใหม่');
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('result-card').style.display = 'none';
+
+  // ── ถ้า SKU ใหม่ ให้บันทึกลง Products ก่อน ──────────────────────────────
+  const skuVal = g('sku');
+  if (skuVal && skuDBData === null) {
+    try {
+      const skuPayload = {
+        type: 'save_product',
+        sku:                 skuVal,
+        product_name:        g('product_name'),
+        details:             g('details'),
+        use_environment:     g('use_environment'),
+        width:               g('width'),   length: g('length'), height: g('height'),
+        diameter:            g('diameter'), target_weight: g('target_weight'),
+        size_flexibility:    g('size_flexibility'), tolerance: g('tolerance'),
+        primary_material:    g('primary_material'), secondary_material: g('secondary_material'),
+        materials_to_avoid:  g('materials_to_avoid'), sourcing_note: g('sourcing_note'),
+        surface_finish:      g('surface_finish'), color: g('color'),
+        color_to_avoid:      g('color_to_avoid'), special_treatment: g('special_treatment'),
+        standards:           g('standards'),
+        remarks:             g('remarks'),
+        drawing_perspective: drawingData['perspective'] || '',
+        drawing_front:       drawingData['front']       || '',
+        drawing_side_l:      drawingData['side_l']      || '',
+        drawing_side_r:      drawingData['side_r']      || '',
+        drawing_top:         drawingData['top']         || '',
+        drawing_section:     drawingData['section']     || '',
+        drawing_detail:      drawingData['detail']      || ''
+      };
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(skuPayload)
+      });
+    } catch(e) { console.warn('SKU save warning:', e); }
+  }
+
+  const payload = {
+    type: 'submit_production_order',
+    production_id:       prodId,
+    order_date:          g('order_date'),
+    project_id:          g('project_id'),
+    project_name:        g('project_name'),
+    client:              g('client'),
+    sku:                 g('sku'),
+    product_name:        g('product_name'),
+    details:             g('details'),
+    use_environment:     g('use_environment'),
+    width:               g('width'),
+    length:              g('length'),
+    height:              g('height'),
+    diameter:            g('diameter'),
+    target_weight:       g('target_weight'),
+    size_flexibility:    g('size_flexibility'),
+    tolerance:           g('tolerance'),
+    primary_material:    g('primary_material'),
+    secondary_material:  g('secondary_material'),
+    materials_to_avoid:  g('materials_to_avoid'),
+    sourcing_note:       g('sourcing_note'),
+    surface_finish:      g('surface_finish'),
+    color:               g('color'),
+    color_to_avoid:      g('color_to_avoid'),
+    special_treatment:   g('special_treatment'),
+    quantity:            g('quantity'),
+    production_method:   g('production_method'),
+    lead_time:              g('lead_time'),
+    priority:               g('priority'),
+    target_start_date:      g('target_start_date'),
+    target_completion_date: g('target_completion_date'),
+    packaging_requirement:  g('packaging_requirement'),
+    scale:               g('scale'),
+    standards:           g('standards'),
+    remarks:             g('remarks'),
+    drawing_perspective:     drawingData['perspective'] || '',
+    drawing_front:           drawingData['front']       || '',
+    drawing_side_l:          drawingData['side_l']      || '',
+    drawing_side_r:          drawingData['side_r']      || '',
+    drawing_top:             drawingData['top']         || '',
+    drawing_section:         drawingData['section']     || '',
+    drawing_detail:          drawingData['detail']      || '',
+    // Existing URLs from Products catalog (fallback if no new upload)
+    drawing_perspective_url: drawingDBUrls['perspective'] || '',
+    drawing_front_url:       drawingDBUrls['front']       || '',
+    drawing_side_l_url:      drawingDBUrls['side_l']      || '',
+    drawing_side_r_url:      drawingDBUrls['side_r']      || '',
+    drawing_top_url:         drawingDBUrls['top']         || '',
+    drawing_section_url:     drawingDBUrls['section']     || '',
+    drawing_detail_url:      drawingDBUrls['detail']      || ''
+  };
+
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    document.getElementById('loading').style.display = 'none';
+
+    if (json.status === 'ok') {
+      document.getElementById('result-pid').textContent = json.production_id || prodId;
+      const link = document.getElementById('pdf-link');
+      if (json.pdf_url) {
+        link.href        = json.pdf_url;
+        link.textContent = 'เปิด PDF — ' + (json.production_id || prodId);
+      } else {
+        link.textContent = 'บันทึกแล้ว (PDF ยังไม่พร้อม)';
+        link.href        = '#';
+      }
+      document.getElementById('result-card').style.display = 'block';
+    } else {
+      throw new Error(json.msg || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ');
+    }
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    const errEl = document.getElementById('error-msg');
+    errEl.textContent = '❌ ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetForm() {
+  // Clear drawing data
+  Object.keys(drawingData).forEach(k => delete drawingData[k]);
+  Object.keys(drawingDBUrls).forEach(k => delete drawingDBUrls[k]);
+  clearSKUState();
+
+  // Reset all inputs
+  document.querySelectorAll('input:not([readonly]#production_id), textarea, select').forEach(el => {
+    el.value = '';
+  });
+  // Clear readonly project fields
+  ['project_name','client'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value       = '';
+    el.placeholder = '— ดึงจาก Project ID —';
+    el.classList.remove('looking','found');
+  });
+  // Clear readonly SKU field
+  const pnEl = document.getElementById('product_name');
+  pnEl.value       = '';
+  pnEl.placeholder = '— ดึงจาก SKU —';
+  pnEl.classList.remove('looking','found');
+  document.querySelectorAll('.dslot.has-img').forEach(slot => {
+    const key = slot.id.replace('slot-','');
+    slot.classList.remove('has-img');
+    const ph = key === 'perspective'
+      ? '<span class="icon">📐</span>คลิกเพื่ออัปโหลด<br>มุมมอง Perspective'
+      : 'คลิกอัปโหลด';
+    document.getElementById('prev-' + key).innerHTML =
+      '<div class="placeholder">' + ph + '</div>';
+    const fi = document.getElementById('file-' + key);
+    if (fi) fi.value = '';
+  });
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
+
+  // Re-fetch new Production ID
+  document.getElementById('production_id').value = '';
+  document.getElementById('pid-badge').textContent = 'กำลังโหลด…';
+  document.getElementById('submit-btn').disabled = false;
+
+  const today = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('order_date').value =
+    today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+
+  fetch(APPS_SCRIPT_URL + '?action=nextpdid')
+    .then(r => r.json())
+    .then(json => {
+      document.getElementById('production_id').value = json.id || '';
+      document.getElementById('pid-badge').textContent = json.id || 'Production ID';
+    })
+    .catch(() => {
+      document.getElementById('pid-badge').textContent = 'โหลดไม่ได้';
+    });
+}
+</script>
+</body>
+</html>
