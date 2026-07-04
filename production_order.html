@@ -105,7 +105,7 @@ input[type=file]{display:none}
 /* ── Buttons ── */
 .btn-primary{
   background:#1a1a2e;color:#fff;border:none;border-radius:10px;
-  padding:14px 40px;font-family:inherit;font-size:15px;font-weight:700;
+  width:320px;max-width:100%;padding:14px 20px;font-family:inherit;font-size:15px;font-weight:700;
   cursor:pointer;transition:background .2s,transform .1s
 }
 .btn-primary:hover{background:#2d2d52}
@@ -115,7 +115,8 @@ input[type=file]{display:none}
 .btn-secondary{
   display:inline-block;background:#fff;color:#1a1a2e;
   border:1.5px solid #1a1a2e;border-radius:10px;
-  padding:11px 26px;font-family:inherit;font-size:13.5px;font-weight:700;
+  width:320px;max-width:100%;box-sizing:border-box;
+  padding:12.5px 20px;font-family:inherit;font-size:15px;font-weight:700;
   cursor:pointer;transition:background .2s,transform .1s;margin-top:10px
 }
 .btn-secondary:hover{background:#f0f0f0}
@@ -252,10 +253,6 @@ input[type=file]{display:none}
         <div class="field"><label>Diameter (mm)</label><input id="diameter" type="number" min="0"></div>
         <div class="field"><label>Target Weight (g)</label><input id="target_weight" type="number" min="0"></div>
         <div class="field"><label>Tolerance (±mm)</label><input id="tolerance" placeholder="เช่น 1.5"></div>
-        <div class="field dim-full">
-          <label>Size Flexibility</label>
-          <input id="size_flexibility" placeholder="เช่น ยืดหยุ่นได้ ±5mm ในแนวกว้าง">
-        </div>
       </div>
     </div>
   </div>
@@ -589,7 +586,7 @@ function clearSKUState() {
 // Fields that get pre-filled from Products catalog
 const SKU_FILL_FIELDS = [
   'product_name','details','use_environment',
-  'width','length','height','diameter','target_weight','size_flexibility','tolerance',
+  'width','length','height','diameter','target_weight','tolerance',
   'primary_material','secondary_material','materials_to_avoid','sourcing_note',
   'surface_finish','color','color_to_avoid','special_treatment','standards','remarks'
 ];
@@ -730,7 +727,7 @@ function buildProductPayload(skuVal) {
     use_environment:     g('use_environment'),
     width:               g('width'),   length: g('length'), height: g('height'),
     diameter:            g('diameter'), target_weight: g('target_weight'),
-    size_flexibility:    g('size_flexibility'), tolerance: g('tolerance'),
+    tolerance:           g('tolerance'),
     primary_material:    g('primary_material'), secondary_material: g('secondary_material'),
     materials_to_avoid:  g('materials_to_avoid'), sourcing_note: g('sourcing_note'),
     surface_finish:      g('surface_finish'), color: g('color'),
@@ -789,7 +786,6 @@ async function submitForm() {
     height:              g('height'),
     diameter:            g('diameter'),
     target_weight:       g('target_weight'),
-    size_flexibility:    g('size_flexibility'),
     tolerance:           g('tolerance'),
     primary_material:    g('primary_material'),
     secondary_material:  g('secondary_material'),
