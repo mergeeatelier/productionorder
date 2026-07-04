@@ -51,6 +51,22 @@ body{font-family:'Sarabun',sans-serif;background:#f5f5f0;color:#1a1a2e;font-size
 .field textarea{resize:vertical;min-height:58px}
 .hint{font-size:11px;color:#aaa;margin-top:2px}
 
+/* ── SKU combobox ── */
+.combo-wrap{position:relative}
+.sku-dropdown{
+  display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;
+  background:#fff;border:1.5px solid #e0e0e0;border-radius:8px;
+  max-height:230px;overflow-y:auto;
+  box-shadow:0 8px 20px rgba(0,0,0,.10)
+}
+.sku-dropdown.show{display:block}
+.sku-item{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f2f2f2;line-height:1.4}
+.sku-item:last-child{border-bottom:none}
+.sku-item:hover,.sku-item.active{background:#fdf8ee}
+.sku-item .s-code{font-weight:700;color:#1a1a2e}
+.sku-item .s-name{color:#777;margin-left:5px}
+.sku-empty{padding:10px 12px;font-size:12px;color:#aaa;text-align:center}
+
 /* ── Drawing grid ── */
 .drawing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .dslot{
@@ -95,6 +111,16 @@ input[type=file]{display:none}
 .btn-primary:hover{background:#2d2d52}
 .btn-primary:active{transform:scale(.98)}
 .btn-primary:disabled{background:#bbb;cursor:not-allowed;transform:none}
+
+.btn-secondary{
+  display:inline-block;background:#fff;color:#1a1a2e;
+  border:1.5px solid #1a1a2e;border-radius:10px;
+  padding:11px 26px;font-family:inherit;font-size:13.5px;font-weight:700;
+  cursor:pointer;transition:background .2s,transform .1s;margin-top:10px
+}
+.btn-secondary:hover{background:#f0f0f0}
+.btn-secondary:active{transform:scale(.98)}
+.btn-secondary:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
 /* ── Result / Error ── */
 .submit-area{text-align:center;padding:24px 0 8px}
@@ -186,9 +212,10 @@ input[type=file]{display:none}
     <div class="card-head"><h2>Product Identity</h2></div>
     <div class="card-body">
       <div class="grid2" style="margin-bottom:14px">
-        <div class="field">
+        <div class="field combo-wrap">
           <label>SKU</label>
-          <input id="sku" placeholder="เช่น ACC-2026-001" oninput="onSKUChange()" onblur="lookupSKU()">
+          <input id="sku" autocomplete="off" placeholder="ค้นหา SKU เดิม หรือพิมพ์ SKU ใหม่" oninput="onSKUInput()" onfocus="onSKUInput()" onblur="onSKUBlur()">
+          <div class="sku-dropdown" id="sku-dropdown"></div>
         </div>
         <div class="field">
           <label>Product Name</label>
@@ -407,19 +434,23 @@ input[type=file]{display:none}
     <button class="btn-primary" id="submit-btn" onclick="submitForm()">
       สร้าง Production Order &amp; PDF
     </button>
+    <br>
+    <button class="btn-secondary" id="save-product-btn" onclick="saveProductOnly()">
+      บันทึกสินค้าอย่างเดียว (ไม่สร้าง PO)
+    </button>
     <div class="loading" id="loading">
-      <span>กำลังอัปโหลดรูปและสร้าง PDF… อาจใช้เวลา 30–60 วินาที</span>
+      <span id="loading-text">กำลังอัปโหลดรูปและสร้าง PDF… อาจใช้เวลา 30–60 วินาที</span>
     </div>
     <div class="error-msg" id="error-msg"></div>
   </div>
 
   <!-- RESULT -->
   <div class="result-card" id="result-card">
-    <h3>สร้าง Production Order เรียบร้อย</h3>
-    <div class="sub">Production ID: <b id="result-pid"></b></div>
+    <h3 id="result-title">สร้าง Production Order เรียบร้อย</h3>
+    <div class="sub"><span id="result-label">Production ID</span>: <b id="result-pid"></b></div>
     <a class="pdf-link" id="pdf-link" href="#" target="_blank">📄 เปิด PDF</a>
     <br>
-    <button class="reset-btn" onclick="resetForm()">สร้าง Order ใหม่</button>
+    <button class="reset-btn" onclick="resetForm()">ปิดข้อความนี้ / เริ่มรายการใหม่</button>
   </div>
 
 </div><!-- /body -->
@@ -484,11 +515,69 @@ async function lookupProject() {
 
 // ── SKU state ─────────────────────────────────────────────────────────────────
 let skuDBData = null; // null = not found / not searched; object = found data
+let skuList   = [];   // cached {sku, product_name} list for the combobox
 
-function onSKUChange() {
-  if (!g('sku')) {
-    clearSKUState();
+async function loadSkuList() {
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=skulist');
+    const json = await res.json();
+    skuList = json.items || [];
+  } catch(e) { console.warn('skulist load failed:', e); }
+}
+
+function _escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function _escAttr(s) {
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g, "\\'");
+}
+
+function onSKUInput() {
+  const val = g('sku');
+  if (!val) clearSKUState();
+  renderSkuDropdown(val);
+}
+
+function renderSkuDropdown(query) {
+  const dd = document.getElementById('sku-dropdown');
+  const q  = query.trim().toLowerCase();
+  if (!q) { dd.classList.remove('show'); dd.innerHTML = ''; return; }
+
+  const matches = skuList
+    .filter(item => (item.sku + ' ' + item.product_name).toLowerCase().includes(q))
+    .slice(0, 8);
+
+  if (matches.length === 0) {
+    dd.innerHTML = '<div class="sku-empty">ไม่พบ SKU นี้ในระบบ — พิมพ์ต่อเพื่อสร้างใหม่</div>';
+  } else {
+    dd.innerHTML = matches.map(item =>
+      '<div class="sku-item" onmousedown="selectSKU(\'' + _escAttr(item.sku) + '\')">' +
+        '<span class="s-code">' + _escHtml(item.sku) + '</span>' +
+        '<span class="s-name">' + _escHtml(item.product_name) + '</span>' +
+      '</div>'
+    ).join('');
   }
+  dd.classList.add('show');
+}
+
+function selectSKU(sku) {
+  document.getElementById('sku').value = sku;
+  hideSkuDropdown();
+  lookupSKU();
+}
+
+function hideSkuDropdown() {
+  const dd = document.getElementById('sku-dropdown');
+  dd.classList.remove('show');
+  dd.innerHTML = '';
+}
+
+function onSKUBlur() {
+  // Delay so a click (onmousedown) on a dropdown item registers before we hide it
+  setTimeout(() => {
+    hideSkuDropdown();
+    lookupSKU();
+  }, 150);
 }
 
 function clearSKUState() {
@@ -589,6 +678,9 @@ const drawingData = {}; // key → full base64 data URL
     document.getElementById('pid-badge').textContent = 'โหลดไม่ได้ — refresh ใหม่';
     console.error('nextpdid error:', e);
   }
+
+  // Preload SKU list for the combobox
+  loadSkuList();
 })();
 
 // ── Image upload ──────────────────────────────────────────────────────────────
@@ -629,6 +721,32 @@ function g(id) {
   return el ? el.value.trim() : '';
 }
 
+function buildProductPayload(skuVal) {
+  return {
+    type: 'save_product',
+    sku:                 skuVal,
+    product_name:        g('product_name'),
+    details:             g('details'),
+    use_environment:     g('use_environment'),
+    width:               g('width'),   length: g('length'), height: g('height'),
+    diameter:            g('diameter'), target_weight: g('target_weight'),
+    size_flexibility:    g('size_flexibility'), tolerance: g('tolerance'),
+    primary_material:    g('primary_material'), secondary_material: g('secondary_material'),
+    materials_to_avoid:  g('materials_to_avoid'), sourcing_note: g('sourcing_note'),
+    surface_finish:      g('surface_finish'), color: g('color'),
+    color_to_avoid:      g('color_to_avoid'), special_treatment: g('special_treatment'),
+    standards:           g('standards'),
+    remarks:             g('remarks'),
+    drawing_perspective: drawingData['perspective'] || '',
+    drawing_front:       drawingData['front']       || '',
+    drawing_side_l:      drawingData['side_l']      || '',
+    drawing_side_r:      drawingData['side_r']      || '',
+    drawing_top:         drawingData['top']         || '',
+    drawing_section:     drawingData['section']     || '',
+    drawing_detail:      drawingData['detail']      || ''
+  };
+}
+
 // ── Submit ────────────────────────────────────────────────────────────────────
 async function submitForm() {
   const prodId = g('production_id');
@@ -639,6 +757,7 @@ async function submitForm() {
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
+  document.getElementById('save-product-btn').disabled = true;
   document.getElementById('loading').style.display = 'block';
   document.getElementById('error-msg').style.display = 'none';
   document.getElementById('result-card').style.display = 'none';
@@ -647,32 +766,9 @@ async function submitForm() {
   const skuVal = g('sku');
   if (skuVal && skuDBData === null) {
     try {
-      const skuPayload = {
-        type: 'save_product',
-        sku:                 skuVal,
-        product_name:        g('product_name'),
-        details:             g('details'),
-        use_environment:     g('use_environment'),
-        width:               g('width'),   length: g('length'), height: g('height'),
-        diameter:            g('diameter'), target_weight: g('target_weight'),
-        size_flexibility:    g('size_flexibility'), tolerance: g('tolerance'),
-        primary_material:    g('primary_material'), secondary_material: g('secondary_material'),
-        materials_to_avoid:  g('materials_to_avoid'), sourcing_note: g('sourcing_note'),
-        surface_finish:      g('surface_finish'), color: g('color'),
-        color_to_avoid:      g('color_to_avoid'), special_treatment: g('special_treatment'),
-        standards:           g('standards'),
-        remarks:             g('remarks'),
-        drawing_perspective: drawingData['perspective'] || '',
-        drawing_front:       drawingData['front']       || '',
-        drawing_side_l:      drawingData['side_l']      || '',
-        drawing_side_r:      drawingData['side_r']      || '',
-        drawing_top:         drawingData['top']         || '',
-        drawing_section:     drawingData['section']     || '',
-        drawing_detail:      drawingData['detail']      || ''
-      };
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(skuPayload)
+        body: JSON.stringify(buildProductPayload(skuVal))
       });
     } catch(e) { console.warn('SKU save warning:', e); }
   }
@@ -741,8 +837,11 @@ async function submitForm() {
     document.getElementById('loading').style.display = 'none';
 
     if (json.status === 'ok') {
-      document.getElementById('result-pid').textContent = json.production_id || prodId;
+      document.getElementById('result-title').textContent = 'สร้าง Production Order เรียบร้อย';
+      document.getElementById('result-label').textContent = 'Production ID';
+      document.getElementById('result-pid').textContent   = json.production_id || prodId;
       const link = document.getElementById('pdf-link');
+      link.style.display = 'inline-block';
       if (json.pdf_url) {
         link.href        = json.pdf_url;
         link.textContent = 'เปิด PDF — ' + (json.production_id || prodId);
@@ -751,6 +850,7 @@ async function submitForm() {
         link.href        = '#';
       }
       document.getElementById('result-card').style.display = 'block';
+      clearFormFields();
     } else {
       throw new Error(json.msg || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ');
     }
@@ -759,16 +859,70 @@ async function submitForm() {
     const errEl = document.getElementById('error-msg');
     errEl.textContent = '❌ ' + e.message;
     errEl.style.display = 'block';
+  } finally {
     btn.disabled = false;
+    document.getElementById('save-product-btn').disabled = false;
   }
 }
 
-// ── Reset ─────────────────────────────────────────────────────────────────────
-function resetForm() {
+// ── Save product only (no Production Order / PDF) ───────────────────────────
+async function saveProductOnly() {
+  const skuVal = g('sku');
+  if (!skuVal) {
+    alert('กรุณากรอก SKU ก่อนบันทึกสินค้า');
+    return;
+  }
+
+  const btn      = document.getElementById('save-product-btn');
+  const mainBtn  = document.getElementById('submit-btn');
+  const loading  = document.getElementById('loading');
+  const loadTxt  = document.getElementById('loading-text');
+
+  btn.disabled = true;
+  mainBtn.disabled = true;
+  loadTxt.textContent = 'กำลังบันทึกสินค้า…';
+  loading.style.display = 'block';
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('result-card').style.display = 'none';
+
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify(buildProductPayload(skuVal))
+    });
+    const json = await res.json();
+    loading.style.display = 'none';
+
+    if (json.status === 'ok' || json.status === 'updated') {
+      document.getElementById('result-title').textContent = 'บันทึกสินค้าในแคตตาล็อกเรียบร้อย';
+      document.getElementById('result-label').textContent = 'SKU';
+      document.getElementById('result-pid').textContent   = skuVal;
+      document.getElementById('pdf-link').style.display   = 'none';
+      document.getElementById('result-card').style.display = 'block';
+      clearFormFields();
+    } else {
+      throw new Error(json.msg || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ');
+    }
+  } catch (e) {
+    loading.style.display = 'none';
+    const errEl = document.getElementById('error-msg');
+    errEl.textContent = '❌ ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    loadTxt.textContent = 'กำลังอัปโหลดรูปและสร้าง PDF… อาจใช้เวลา 30–60 วินาที';
+    btn.disabled = false;
+    mainBtn.disabled = false;
+  }
+}
+
+// ── Clear fields (used after a successful save, keeps result card visible) ──
+function clearFormFields() {
   // Clear drawing data
   Object.keys(drawingData).forEach(k => delete drawingData[k]);
   Object.keys(drawingDBUrls).forEach(k => delete drawingDBUrls[k]);
   clearSKUState();
+  hideSkuDropdown();
 
   // Reset all inputs
   document.querySelectorAll('input:not([readonly]#production_id), textarea, select').forEach(el => {
@@ -797,13 +951,12 @@ function resetForm() {
     const fi = document.getElementById('file-' + key);
     if (fi) fi.value = '';
   });
-  document.getElementById('result-card').style.display = 'none';
-  document.getElementById('error-msg').style.display = 'none';
 
   // Re-fetch new Production ID
   document.getElementById('production_id').value = '';
   document.getElementById('pid-badge').textContent = 'กำลังโหลด…';
   document.getElementById('submit-btn').disabled = false;
+  document.getElementById('save-product-btn').disabled = false;
 
   const today = new Date();
   const pad = n => String(n).padStart(2, '0');
@@ -819,6 +972,16 @@ function resetForm() {
     .catch(() => {
       document.getElementById('pid-badge').textContent = 'โหลดไม่ได้';
     });
+
+  // Refresh cached SKU list so newly-created SKUs show up in the combobox
+  loadSkuList();
+}
+
+// ── Reset (manual "close result / start over" button) ───────────────────────
+function resetForm() {
+  clearFormFields();
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
 }
 </script>
 </body>
