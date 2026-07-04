@@ -50,6 +50,7 @@ body{font-family:'Sarabun',sans-serif;background:#f5f5f0;color:#1a1a2e;font-size
 .field input[readonly].found{background:#f0f0f8}
 .field textarea{resize:vertical;min-height:58px}
 .hint{font-size:11px;color:#aaa;margin-top:2px}
+.other-field{margin-top:6px}
 
 /* ── SKU combobox ── */
 .combo-wrap{position:relative}
@@ -218,9 +219,10 @@ input[type=file]{display:none}
           <input id="sku" autocomplete="off" placeholder="ค้นหา SKU เดิม หรือพิมพ์ SKU ใหม่" oninput="onSKUInput()" onfocus="onSKUInput()" onblur="onSKUBlur()">
           <div class="sku-dropdown" id="sku-dropdown"></div>
         </div>
-        <div class="field">
+        <div class="field combo-wrap">
           <label>Product Name</label>
-          <input id="product_name" placeholder="กรอกหากยังไม่มีใน SKU">
+          <input id="product_name" autocomplete="off" placeholder="ค้นหาชื่อสินค้าเดิม หรือพิมพ์ชื่อใหม่" oninput="onProductNameInput()" onfocus="onProductNameInput()" onblur="onProductNameBlur()">
+          <div class="sku-dropdown" id="product-dropdown"></div>
         </div>
       </div>
       <div id="sku-new-banner" style="display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#5d4037">
@@ -236,7 +238,18 @@ input[type=file]{display:none}
         </div>
         <div class="field">
           <label>Use Environment</label>
-          <input id="use_environment" placeholder="เช่น ใช้กลางแจ้ง, ในบ้าน">
+          <select id="use_environment" onchange="toggleOtherField('use_environment')">
+            <option value="">— เลือก —</option>
+            <option>Indoor</option>
+            <option>Outdoor</option>
+            <option>Near Water - Humid</option>
+            <option>High Temperature</option>
+            <option>Food Contact</option>
+            <option>Child Contact</option>
+            <option>Pet Contact</option>
+            <option>Other</option>
+          </select>
+          <input id="use_environment_other" class="other-field" style="display:none" placeholder="ระบุ Use Environment">
         </div>
       </div>
     </div>
@@ -277,7 +290,7 @@ input[type=file]{display:none}
       <div class="grid2">
         <div class="field">
           <label>Surface Finish</label>
-          <select id="surface_finish">
+          <select id="surface_finish" onchange="toggleOtherField('surface_finish')">
             <option value="">— เลือก —</option>
             <option>Matte</option>
             <option>Gloss</option>
@@ -286,9 +299,22 @@ input[type=file]{display:none}
             <option>Texture</option>
             <option>Other</option>
           </select>
+          <input id="surface_finish_other" class="other-field" style="display:none" placeholder="ระบุ Surface Finish">
         </div>
-        <div class="field"><label>Color</label><input id="color"></div>
-        <div class="field"><label>Color to Avoid</label><input id="color_to_avoid"></div>
+        <div class="field combo-wrap">
+          <label>Color</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="color" placeholder="เช่น #CC3399 หรือ Pantone 123C หรือ ชื่อ/รหัสวัสดุ" oninput="updateColorSwatch('color')" style="flex:1">
+            <div id="color-swatch" style="display:none;gap:5px;flex-shrink:0"></div>
+          </div>
+        </div>
+        <div class="field combo-wrap">
+          <label>Color to Avoid</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="color_to_avoid" placeholder="เช่น #CC3399 หรือ Pantone 123C หรือ ชื่อ/รหัสวัสดุ" oninput="updateColorSwatch('color_to_avoid')" style="flex:1">
+            <div id="color_to_avoid-swatch" style="display:none;gap:5px;flex-shrink:0"></div>
+          </div>
+        </div>
         <div class="field"><label>Special Treatment</label><input id="special_treatment" placeholder="เช่น UV coating, anodizing"></div>
       </div>
     </div>
@@ -302,13 +328,14 @@ input[type=file]{display:none}
         <div class="field"><label>Quantity (ชิ้น)</label><input id="quantity" type="number" min="1"></div>
         <div class="field">
           <label>Production Method</label>
-          <select id="production_method">
+          <select id="production_method" onchange="toggleOtherField('production_method')">
             <option value="">— เลือก —</option>
             <option>Hand-made</option>
             <option>Semi</option>
             <option>Mass</option>
             <option>Other</option>
           </select>
+          <input id="production_method_other" class="other-field" style="display:none" placeholder="ระบุ Production Method">
         </div>
         <div class="field"><label>Lead Time (วัน)</label><input id="lead_time" type="number" min="1"></div>
         <div class="field">
@@ -577,6 +604,49 @@ function onSKUBlur() {
   }, 150);
 }
 
+// ── Product Name combobox (searches the same cached list, by name) ──────────
+function onProductNameInput() {
+  renderProductDropdown(g('product_name'));
+}
+
+function renderProductDropdown(query) {
+  const dd = document.getElementById('product-dropdown');
+  const q  = query.trim().toLowerCase();
+  if (!q) { dd.classList.remove('show'); dd.innerHTML = ''; return; }
+
+  const matches = skuList
+    .filter(item => (item.sku + ' ' + item.product_name).toLowerCase().includes(q))
+    .slice(0, 8);
+
+  if (matches.length === 0) {
+    dd.innerHTML = '<div class="sku-empty">ไม่พบสินค้านี้ — พิมพ์ต่อเพื่อสร้างใหม่</div>';
+  } else {
+    dd.innerHTML = matches.map(item =>
+      '<div class="sku-item" onmousedown="selectProductFromName(\'' + _escAttr(item.sku) + '\')">' +
+        '<span class="s-code">' + _escHtml(item.sku) + '</span>' +
+        '<span class="s-name">' + _escHtml(item.product_name) + '</span>' +
+      '</div>'
+    ).join('');
+  }
+  dd.classList.add('show');
+}
+
+function selectProductFromName(sku) {
+  document.getElementById('sku').value = sku;
+  hideProductDropdown();
+  lookupSKU(); // re-uses the exact same fill logic as picking from the SKU box
+}
+
+function hideProductDropdown() {
+  const dd = document.getElementById('product-dropdown');
+  dd.classList.remove('show');
+  dd.innerHTML = '';
+}
+
+function onProductNameBlur() {
+  setTimeout(hideProductDropdown, 150);
+}
+
 function clearSKUState() {
   skuDBData = null;
   document.getElementById('sku-new-banner').style.display   = 'none';
@@ -610,9 +680,15 @@ async function lookupSKU() {
       skuDBData = json;
       // Pre-fill all matching fields
       SKU_FILL_FIELDS.forEach(id => {
+        if (id === 'surface_finish' || id === 'use_environment') {
+          fillSelectOrOther(id, json[id] || '');
+          return;
+        }
         const el = document.getElementById(id);
         if (el && json[id] !== undefined) el.value = json[id];
       });
+      updateColorSwatch('color');
+      updateColorSwatch('color_to_avoid');
       // Pre-fill drawings (show DB badge, store URL for submission)
       DRAWING_KEYS_HTML.forEach(key => {
         const url = json['drawing_' + key];
@@ -718,19 +794,82 @@ function g(id) {
   return el ? el.value.trim() : '';
 }
 
+// ── "Other" select fields (Surface Finish / Production Method) ─────────────
+// ── Color swatch (detects every hex code in the text, e.g. "#CC5544, #112233 และสีอื่นๆ") ──
+// Reused for both "Color" and "Color to Avoid" fields via the fieldId param.
+function updateColorSwatch(fieldId) {
+  const val = g(fieldId);
+  const sw  = document.getElementById(fieldId + '-swatch');
+  if (!sw) return;
+  const matches = val.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g) || [];
+  if (matches.length > 0) {
+    sw.innerHTML = matches.map(hex =>
+      '<div title="' + hex + '" style="width:26px;height:26px;border-radius:6px;' +
+      'border:1.5px solid #ddd;background:' + hex + '"></div>'
+    ).join('');
+    sw.style.display = 'flex';
+  } else {
+    sw.innerHTML = '';
+    sw.style.display = 'none';
+  }
+}
+
+function toggleOtherField(id) {
+  const sel   = document.getElementById(id);
+  const other = document.getElementById(id + '_other');
+  if (!sel || !other) return;
+  if (sel.value === 'Other') {
+    other.style.display = 'block';
+  } else {
+    other.style.display = 'none';
+    other.value = '';
+  }
+}
+
+// Sets a <select>+Other pair from a stored value: if it matches an option, select it;
+// otherwise select "Other" and put the raw value into the free-text field.
+function fillSelectOrOther(id, value) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const match = Array.from(sel.options).some(o => (o.value || o.text) === value);
+  if (value && match) {
+    sel.value = value;
+  } else if (value) {
+    sel.value = 'Other';
+  } else {
+    sel.value = '';
+  }
+  toggleOtherField(id);
+  if (value && !match) {
+    const other = document.getElementById(id + '_other');
+    if (other) other.value = value;
+  }
+}
+
+// Returns the select's value, or the free-text "Other" value if "Other" is selected
+function getSelectValue(id) {
+  const sel = document.getElementById(id);
+  if (!sel) return '';
+  if (sel.value === 'Other') {
+    const other = document.getElementById(id + '_other');
+    return other ? other.value.trim() : '';
+  }
+  return sel.value;
+}
+
 function buildProductPayload(skuVal) {
   return {
     type: 'save_product',
     sku:                 skuVal,
     product_name:        g('product_name'),
     details:             g('details'),
-    use_environment:     g('use_environment'),
+    use_environment:     getSelectValue('use_environment'),
     width:               g('width'),   length: g('length'), height: g('height'),
     diameter:            g('diameter'), target_weight: g('target_weight'),
     tolerance:           g('tolerance'),
     primary_material:    g('primary_material'), secondary_material: g('secondary_material'),
     materials_to_avoid:  g('materials_to_avoid'), sourcing_note: g('sourcing_note'),
-    surface_finish:      g('surface_finish'), color: g('color'),
+    surface_finish:      getSelectValue('surface_finish'), color: g('color'),
     color_to_avoid:      g('color_to_avoid'), special_treatment: g('special_treatment'),
     standards:           g('standards'),
     remarks:             g('remarks'),
@@ -780,7 +919,7 @@ async function submitForm() {
     sku:                 g('sku'),
     product_name:        g('product_name'),
     details:             g('details'),
-    use_environment:     g('use_environment'),
+    use_environment:     getSelectValue('use_environment'),
     width:               g('width'),
     length:              g('length'),
     height:              g('height'),
@@ -791,12 +930,12 @@ async function submitForm() {
     secondary_material:  g('secondary_material'),
     materials_to_avoid:  g('materials_to_avoid'),
     sourcing_note:       g('sourcing_note'),
-    surface_finish:      g('surface_finish'),
+    surface_finish:      getSelectValue('surface_finish'),
     color:               g('color'),
     color_to_avoid:      g('color_to_avoid'),
     special_treatment:   g('special_treatment'),
     quantity:            g('quantity'),
-    production_method:   g('production_method'),
+    production_method:   getSelectValue('production_method'),
     lead_time:              g('lead_time'),
     priority:               g('priority'),
     target_start_date:      g('target_start_date'),
@@ -919,6 +1058,7 @@ function clearFormFields() {
   Object.keys(drawingDBUrls).forEach(k => delete drawingDBUrls[k]);
   clearSKUState();
   hideSkuDropdown();
+  hideProductDropdown();
 
   // Reset all inputs
   document.querySelectorAll('input:not([readonly]#production_id), textarea, select').forEach(el => {
@@ -931,11 +1071,21 @@ function clearFormFields() {
     el.placeholder = '— ดึงจาก Project ID —';
     el.classList.remove('looking','found');
   });
-  // Clear readonly SKU field
+  // Clear Product Name field
   const pnEl = document.getElementById('product_name');
   pnEl.value       = '';
-  pnEl.placeholder = '— ดึงจาก SKU —';
+  pnEl.placeholder = 'ค้นหาชื่อสินค้าเดิม หรือพิมพ์ชื่อใหม่';
   pnEl.classList.remove('looking','found');
+  // Reset "Other" text fields for Surface Finish / Production Method
+  ['surface_finish','production_method','use_environment'].forEach(id => {
+    const other = document.getElementById(id + '_other');
+    if (other) { other.value = ''; other.style.display = 'none'; }
+  });
+  ['color-swatch','color_to_avoid-swatch'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.display = 'none';
+    el.innerHTML = '';
+  });
   document.querySelectorAll('.dslot.has-img').forEach(slot => {
     const key = slot.id.replace('slot-','');
     slot.classList.remove('has-img');
