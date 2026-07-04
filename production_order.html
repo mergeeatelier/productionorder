@@ -190,6 +190,10 @@ input[type=file]{display:none}
           <input id="production_id" readonly placeholder="กำลังโหลด…">
         </div>
         <div class="field">
+          <label>Quotation No</label>
+          <input id="quotation_no" placeholder="เช่น QT-2026070045">
+        </div>
+        <div class="field">
           <label>วันที่สั่งผลิต</label>
           <input type="date" id="order_date">
         </div>
@@ -914,6 +918,7 @@ async function submitForm() {
     production_id:       prodId,
     order_date:          g('order_date'),
     project_id:          g('project_id'),
+    quotation_no:        g('quotation_no'),
     project_name:        g('project_name'),
     client:              g('client'),
     sku:                 g('sku'),
