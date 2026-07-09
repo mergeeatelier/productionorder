@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill of Materials - MERGEE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#f5f5f0;color:#1a1a2e;font-size:15px;min-height:100vh}
+.page-header{padding:20px 24px 16px;background:#1a1a2e;color:#fff}
+.eyebrow{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:3px}
+.page-header h1{font-size:20px;font-weight:700}
+.body{padding:20px 24px;max-width:1100px;margin:0 auto}
+.card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;margin-bottom:16px}
+.card-head{padding:10px 16px;background:#1a1a2e;color:#fff;border-radius:11px 11px 0 0}
+.card-head h2{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.card-body{padding:16px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em}
+.field input,.field select,.field textarea{width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-family:inherit;font-size:14px;color:#1a1a2e;background:#fafafa}
+.field input:focus,.field select:focus{outline:none;border-color:#3d5af1;background:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+@media(max-width:600px){
+  .grid2,.grid3{grid-template-columns:1fr}
+  .body{padding:16px 14px}
+  table{display:block;overflow-x:auto;white-space:nowrap}
+}
+
+.combo-wrap{position:relative}
+.combo-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;background:#fff;border:1.5px solid #e0e0e0;border-radius:8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.combo-dropdown.show{display:block}
+.combo-item{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f2f2f2}
+.combo-item:last-child{border-bottom:none}
+.combo-item:hover{background:#fdf8ee}
+.combo-empty{padding:10px 12px;font-size:12px;color:#aaa;text-align:center}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f5f5f0;color:#666;font-weight:700;font-size:11px;text-transform:uppercase;padding:8px;text-align:left;border-bottom:1.5px solid #ddd}
+td{padding:8px;border-bottom:1px solid #eee;vertical-align:top}
+.row-actions{white-space:nowrap}
+.row-actions button{border:none;background:none;cursor:pointer;font-size:12px;font-weight:700;padding:2px 6px}
+.row-actions .edit-btn{color:#3d5af1}
+.row-actions .del-btn{color:#c62828}
+.empty-note{color:#aaa;font-size:13px;text-align:center;padding:20px 0}
+
+.btn{border:none;border-radius:10px;padding:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:#fff;width:100%}
+.btn.primary{background:#1a1a2e}
+.btn.secondary{background:#fff;color:#1a1a2e;border:1.5px solid #1a1a2e}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.status-msg{font-size:13px;margin-top:10px;text-align:center;display:none}
+.status-msg.ok{color:#1a7f5a}
+.status-msg.error{color:#c62828}
+.result-link{display:block;text-align:center;margin-top:10px;font-size:13px;font-weight:700;color:#1a1a2e;word-break:break-all;display:none}
+.grand-total{font-size:16px;font-weight:700;text-align:right;margin-top:12px;border-top:1.5px solid #1a1a2e;padding-top:10px}
+.saving-msg{display:none;text-align:center;font-size:13px;font-weight:700;color:#3d5af1;margin-top:8px;animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+</style>
+</head>
+<body>
+
+<div id="password-gate" style="position:fixed;inset:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:320px;width:100%;text-align:center">
+    <div style="font-size:24px;font-weight:600;color:#1a1a2e;margin-bottom:4px">Mergee</div>
+    <div style="font-size:17px;font-weight:600;color:#1a1a2e;margin-bottom:14px">Bill of Materials (BOM)</div>
+    <div style="font-size:13px;color:#888;margin-bottom:14px">Enter password to continue</div>
+    <input type="password" id="gate-password" placeholder="Password" autocomplete="off"
+      style="width:100%;padding:11px 12px;border:1px solid #ddd;border-radius:10px;font-family:'Sarabun',sans-serif;font-size:14px;margin-bottom:12px;text-align:center"
+      onkeydown="if(event.key==='Enter') checkGatePassword()">
+    <button onclick="checkGatePassword()"
+      style="width:100%;background:#1a1a2e;color:#fff;border:none;border-radius:10px;padding:12px;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Enter</button>
+    <div id="gate-error" style="color:#c62828;font-size:12px;margin-top:8px;display:none">Incorrect password</div>
+  </div>
+</div>
+
+
+<div class="page-header">
+  <div class="eyebrow">MERGEE</div>
+  <h1>Bill of Materials (BOM)</h1>
+</div>
+
+<div class="body">
+
+  <!-- SKU SELECTOR -->
+  <div class="card">
+    <div class="card-body">
+      <div class="field combo-wrap">
+        <label>SKU</label>
+        <input id="sku_input" autocomplete="off" placeholder="ค้นหา SKU" oninput="onSkuInput()" onfocus="onSkuInput()" onblur="onSkuBlur()">
+        <div class="combo-dropdown" id="sku-dropdown"></div>
+      </div>
+      <div id="sku-product-name" style="font-size:13px;color:#888;margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div id="bom-sections" style="display:none">
+
+    <!-- EXISTING BOM ITEMS -->
+    <div class="card">
+      <div class="card-head"><h2>รายการวัสดุ</h2></div>
+      <div class="card-body">
+        <table>
+          <thead><tr>
+            <th>วัสดุ</th><th>หน่วย</th><th>Qty/Unit</th><th>Lot</th><th>Supplier</th><th>Unit Cost</th><th>Total Cost</th><th></th>
+          </tr></thead>
+          <tbody id="bom-tbody"></tbody>
+        </table>
+        <div class="empty-note" id="bom-empty" style="display:none">ยังไม่มีวัสดุสำหรับ SKU นี้</div>
+      </div>
+    </div>
+
+    <!-- ADD / EDIT MATERIAL FORM -->
+    <div class="card">
+      <div class="card-head"><h2 id="form-title">เพิ่มวัสดุ</h2></div>
+      <div class="card-body">
+        <div class="field combo-wrap">
+          <label>ชื่อวัสดุ (Item Name)</label>
+          <input id="item_name" autocomplete="off" placeholder="เช่น เรซิ่น" oninput="onItemNameInput()" onfocus="onItemNameInput()" onblur="onItemNameBlur()">
+          <div class="combo-dropdown" id="item-dropdown"></div>
+        </div>
+        <div class="field">
+          <label>Description (สเปค เช่น เกรด/สี/ขนาด)</label>
+          <input id="description" placeholder="ไม่บังคับ">
+        </div>
+        <div class="grid3">
+          <div class="field"><label>Unit</label><input id="unit" placeholder="เช่น กก., ชิ้น, เมตร"></div>
+          <div class="field">
+            <label>Qty Use Per Unit</label>
+            <input id="qty_per_unit" type="text" placeholder="เช่น 0.5 หรือ 1/200" oninput="updateTotalCostPreview()">
+            <div id="qty-per-unit-preview" style="font-size:11px;color:#888"></div>
+          </div>
+          <div class="field"><label>Lot Size</label><input id="lot_size" type="number" step="any" placeholder="1 ถ้าซื้อทีละชิ้นได้"></div>
+        </div>
+
+        <div class="field">
+          <label>Supplier</label>
+          <select id="supplier_select" onchange="onSupplierSelectChange()"></select>
+        </div>
+        <div id="new-supplier-block" style="display:none;border:1px dashed #ccc;border-radius:8px;padding:12px;margin-bottom:14px">
+          <div class="field"><label>ชื่อ Supplier ใหม่</label><input id="new_supplier_name"></div>
+          <div class="grid2">
+            <div class="field"><label>ผู้ติดต่อ</label><input id="new_supplier_contact"></div>
+            <div class="field"><label>เบอร์โทร</label><input id="new_supplier_phone"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Email</label><input id="new_supplier_email"></div>
+            <div class="field"><label>ที่อยู่</label><input id="new_supplier_address"></div>
+          </div>
+          <div class="field"><label>หมายเหตุ</label><input id="new_supplier_notes"></div>
+        </div>
+
+        <div class="grid3">
+          <div class="field"><label>Unit Cost</label><input id="unit_cost" type="number" step="any" oninput="updateTotalCostPreview()"></div>
+          <div class="field"><label>Total Cost (ต่อหน่วยสินค้า)</label><input id="total_cost_preview" readonly style="background:#f0f0f8"></div>
+          <div class="field"><label>Lead Time</label><input id="lead_time" placeholder="เช่น 7 วัน"></div>
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <input id="bom_notes">
+        </div>
+
+        <button class="btn primary" id="btn-save-item" onclick="saveBOMItemClick()">บันทึกวัสดุ</button>
+        <button class="btn secondary" id="btn-cancel-edit" onclick="cancelEdit()" style="display:none;margin-top:8px">ยกเลิกแก้ไข</button>
+        <div class="saving-msg" id="item-saving-msg">กำลังบันทึกข้อมูล…</div>
+        <div class="status-msg" id="item-status"></div>
+      </div>
+    </div>
+
+    <!-- CALCULATE -->
+    <div class="card">
+      <div class="card-head"><h2>คำนวณตามจำนวนที่ต้องการผลิต</h2></div>
+      <div class="card-body">
+        <div class="field">
+          <label>จำนวนที่ต้องการผลิต</label>
+          <input id="requested_qty" type="number" step="any" oninput="renderCalculation()">
+        </div>
+        <table>
+          <thead><tr>
+            <th>วัสดุ</th><th>ต้องใช้จริง</th><th>ต้องสั่งซื้อ (ปัดล็อต)</th><th>Line Cost</th>
+          </tr></thead>
+          <tbody id="calc-tbody"></tbody>
+        </table>
+        <div class="grand-total" id="grand-total">ต้นทุนรวมที่ต้องจ่าย: —</div>
+        <button class="btn primary" id="btn-gen-pdf" onclick="generateBOMPdf()" style="margin-top:14px">พิมพ์เอกสาร (PDF)</button>
+        <div class="saving-msg" id="pdf-saving-msg">กำลังสร้าง PDF…</div>
+        <div class="status-msg" id="pdf-status"></div>
+        <a class="result-link" id="pdf-link" href="#" target="_blank">📄 เปิดเอกสาร Bill of Materials</a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ⚠️ เปลี่ยนรหัสผ่านตรงนี้เป็นรหัสที่ต้องการ
+const BOM_PASSWORD = 'M4599';
+
+function checkGatePassword() {
+  const val = document.getElementById('gate-password').value;
+  if (val === BOM_PASSWORD) {
+    sessionStorage.setItem('bom_authed', '1');
+    document.getElementById('password-gate').style.display = 'none';
+  } else {
+    document.getElementById('gate-error').style.display = 'block';
+  }
+}
+
+if (sessionStorage.getItem('bom_authed') === '1') {
+  document.getElementById('password-gate').style.display = 'none';
+}
+
+const APPS_URL = 'https://script.google.com/macros/s/AKfycbxeYliQGhs7qpPSWwQ4nBKczlFxuT0_isNaAWUX6zvqo0-Twa-NlgbCksYvJZhk_Etf/exec';
+
+let skuList = [];
+let suppliersList = [];
+let bomItems = [];
+let currentSku = '';
+let currentProductName = '';
+let editingItemName = null;
+
+function escAttr(s) { return String(s || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function escHtml(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Accepts either a plain number ("0.5") or a fraction ("1/200") and returns the
+// decimal value. Used for Qty per unit, since some materials are easier to enter
+// as a fraction (e.g. "1 sheet makes 200 units" → 1/200 per unit).
+function parseQty(str) {
+  str = String(str || '').trim();
+  if (!str) return 0;
+  const m = str.match(/^(-?\d+(?:\.\d+)?)\s*\/\s*(-?\d+(?:\.\d+)?)$/);
+  if (m) {
+    const num = parseFloat(m[1]);
+    const den = parseFloat(m[2]);
+    return den !== 0 ? num / den : 0;
+  }
+  return parseFloat(str) || 0;
+}
+
+async function loadSkuList() {
+  try {
+    const res = await fetch(APPS_URL + '?action=skulist');
+    const json = await res.json();
+    skuList = json.items || [];
+  } catch(e) { console.error('loadSkuList failed:', e); }
+}
+
+async function loadSuppliersList() {
+  try {
+    const res = await fetch(APPS_URL + '?action=supplierslist');
+    const json = await res.json();
+    suppliersList = json.items || [];
+  } catch(e) { console.error('loadSuppliersList failed:', e); }
+}
+
+function onSkuInput() {
+  const q = document.getElementById('sku_input').value.trim().toLowerCase();
+  const dd = document.getElementById('sku-dropdown');
+  if (!q) { dd.classList.remove('show'); dd.innerHTML = ''; return; }
+  const matches = skuList.filter(item => (item.sku + ' ' + item.product_name).toLowerCase().includes(q)).slice(0, 8);
+  if (matches.length === 0) {
+    dd.innerHTML = '<div class="combo-empty">ไม่พบ SKU นี้</div>';
+  } else {
+    dd.innerHTML = matches.map(item =>
+      '<div class="combo-item" onmousedown="selectSku(' + "'" + escAttr(item.sku) + "'" + ')"><b>' + escHtml(item.sku) + '</b> ' + escHtml(item.product_name) + '</div>'
+    ).join('');
+  }
+  dd.classList.add('show');
+}
+
+function onSkuBlur() {
+  setTimeout(() => {
+    document.getElementById('sku-dropdown').classList.remove('show');
+  }, 150);
+}
+
+async function selectSku(sku) {
+  document.getElementById('sku_input').value = sku;
+  document.getElementById('sku-dropdown').classList.remove('show');
+  const found = skuList.find(item => item.sku === sku);
+  currentSku = sku;
+  currentProductName = found ? found.product_name : '';
+  document.getElementById('sku-product-name').textContent = currentProductName ? ('สินค้า: ' + currentProductName) : '';
+  document.getElementById('bom-sections').style.display = 'block';
+  cancelEdit();
+  await loadBOMForSku();
+}
+
+async function loadBOMForSku() {
+  try {
+    const res = await fetch(APPS_URL + '?action=bomlist&sku=' + encodeURIComponent(currentSku));
+    const json = await res.json();
+    bomItems = json.items || [];
+  } catch(e) { console.error('loadBOMForSku failed:', e); bomItems = []; }
+  renderBOMTable();
+  renderCalculation();
+}
+
+function renderBOMTable() {
+  const tbody = document.getElementById('bom-tbody');
+  const emptyNote = document.getElementById('bom-empty');
+  if (bomItems.length === 0) {
+    tbody.innerHTML = '';
+    emptyNote.style.display = 'block';
+    return;
+  }
+  emptyNote.style.display = 'none';
+  tbody.innerHTML = bomItems.map(it => '<tr>' +
+    '<td><b>' + escHtml(it.item_name) + '</b>' + (it.description ? '<br><span style="color:#888;font-size:12px">' + escHtml(it.description) + '</span>' : '') + '</td>' +
+    '<td>' + escHtml(it.unit) + '</td>' +
+    '<td>' + it.qty_per_unit + '</td>' +
+    '<td>' + (it.lot_size || '—') + '</td>' +
+    '<td>' + escHtml(it.supplier) + '</td>' +
+    '<td>' + it.unit_cost.toFixed(2) + '</td>' +
+    '<td>' + it.total_cost.toFixed(2) + '</td>' +
+    '<td class="row-actions">' +
+      '<button class="edit-btn" onclick="editBOMItem(' + "'" + escAttr(it.item_name) + "'" + ')">แก้ไข</button>' +
+      '<button class="del-btn" onclick="deleteBOMItemUI(' + "'" + escAttr(it.item_name) + "'" + ')">ลบ</button>' +
+    '</td></tr>'
+  ).join('');
+}
+
+function getAllItemNames() {
+  const set = new Set();
+  suppliersList.forEach(s => s.items.forEach(i => set.add(i)));
+  return Array.from(set);
+}
+
+function onItemNameInput() {
+  const q = document.getElementById('item_name').value.trim().toLowerCase();
+  const dd = document.getElementById('item-dropdown');
+  populateSupplierOptions(document.getElementById('item_name').value);
+  if (!q) { dd.classList.remove('show'); dd.innerHTML = ''; return; }
+  const matches = getAllItemNames().filter(n => n.toLowerCase().includes(q)).slice(0, 8);
+  if (matches.length === 0) {
+    dd.innerHTML = '<div class="combo-empty">ไม่พบ — พิมพ์ต่อเพื่อสร้างวัสดุใหม่</div>';
+  } else {
+    dd.innerHTML = matches.map(n =>
+      '<div class="combo-item" onmousedown="selectItemName(' + "'" + escAttr(n) + "'" + ')">' + escHtml(n) + '</div>'
+    ).join('');
+  }
+  dd.classList.add('show');
+}
+
+function onItemNameBlur() {
+  setTimeout(() => { document.getElementById('item-dropdown').classList.remove('show'); }, 150);
+}
+
+function selectItemName(name) {
+  document.getElementById('item_name').value = name;
+  document.getElementById('item-dropdown').classList.remove('show');
+  populateSupplierOptions(name);
+}
+
+function populateSupplierOptions(itemName) {
+  const sel = document.getElementById('supplier_select');
+  const q = String(itemName || '').trim().toLowerCase();
+  const matched = q ? suppliersList.filter(s => s.items.some(i => i.toLowerCase() === q)) : [];
+
+  let html = '';
+  if (matched.length === 0) {
+    html += '<option value="">— ยังไม่มี Supplier สำหรับสินค้านี้ —</option>';
+  } else {
+    html += '<option value="">— เลือก —</option>' +
+      matched.map(s => '<option value="' + escAttr(s.supplier) + '">' + escHtml(s.supplier) + '</option>').join('');
+  }
+  html += '<option value="__new__">+ เพิ่ม Supplier ใหม่</option>';
+  sel.innerHTML = html;
+  document.getElementById('new-supplier-block').style.display = 'none';
+}
+
+function onSupplierSelectChange() {
+  const sel = document.getElementById('supplier_select');
+  document.getElementById('new-supplier-block').style.display = sel.value === '__new__' ? 'block' : 'none';
+}
+
+function updateTotalCostPreview() {
+  const rawQty = document.getElementById('qty_per_unit').value;
+  const qty  = parseQty(rawQty);
+  const cost = parseFloat(document.getElementById('unit_cost').value) || 0;
+  document.getElementById('total_cost_preview').value = (qty * cost).toFixed(4);
+  const previewEl = document.getElementById('qty-per-unit-preview');
+  previewEl.textContent = (rawQty.trim() && rawQty.includes('/')) ? ('= ' + qty) : '';
+}
+
+function editBOMItem(itemName) {
+  const it = bomItems.find(x => x.item_name === itemName);
+  if (!it) return;
+  editingItemName = itemName;
+  document.getElementById('form-title').textContent = 'แก้ไขวัสดุ: ' + itemName;
+  document.getElementById('item_name').value = it.item_name;
+  document.getElementById('description').value = it.description;
+  document.getElementById('unit').value = it.unit;
+  document.getElementById('qty_per_unit').value = it.qty_per_unit;
+  document.getElementById('lot_size').value = it.lot_size;
+  document.getElementById('unit_cost').value = it.unit_cost;
+  document.getElementById('lead_time').value = it.lead_time;
+  document.getElementById('bom_notes').value = it.notes;
+  updateTotalCostPreview();
+  populateSupplierOptions(it.item_name);
+  document.getElementById('supplier_select').value = it.supplier || '';
+  document.getElementById('btn-save-item').textContent = 'อัปเดตวัสดุ';
+  document.getElementById('btn-cancel-edit').style.display = 'block';
+  window.scrollTo({ top: document.getElementById('form-title').offsetTop, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  editingItemName = null;
+  document.getElementById('form-title').textContent = 'เพิ่มวัสดุ';
+  ['item_name','description','unit','qty_per_unit','lot_size','unit_cost','lead_time','bom_notes',
+   'new_supplier_name','new_supplier_contact','new_supplier_phone','new_supplier_email','new_supplier_address','new_supplier_notes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('total_cost_preview').value = '';
+  document.getElementById('qty-per-unit-preview').textContent = '';
+  document.getElementById('supplier_select').innerHTML = '';
+  document.getElementById('new-supplier-block').style.display = 'none';
+  document.getElementById('btn-save-item').textContent = 'บันทึกวัสดุ';
+  document.getElementById('btn-cancel-edit').style.display = 'none';
+}
+
+async function saveBOMItemClick() {
+  const itemName = document.getElementById('item_name').value.trim();
+  if (!currentSku) { alert('กรุณาเลือก SKU ก่อน'); return; }
+  if (!itemName) { alert('กรุณากรอกชื่อวัสดุ'); return; }
+
+  const sel = document.getElementById('supplier_select');
+  let supplierName = sel.value;
+  let newSupplierPayload = {};
+  if (supplierName === '__new__') {
+    supplierName = document.getElementById('new_supplier_name').value.trim();
+    if (!supplierName) { alert('กรุณากรอกชื่อ Supplier ใหม่'); return; }
+    newSupplierPayload = {
+      supplier_contact_person: document.getElementById('new_supplier_contact').value.trim(),
+      supplier_phone:          document.getElementById('new_supplier_phone').value.trim(),
+      supplier_email:          document.getElementById('new_supplier_email').value.trim(),
+      supplier_address:        document.getElementById('new_supplier_address').value.trim(),
+      supplier_notes:          document.getElementById('new_supplier_notes').value.trim()
+    };
+  }
+
+  const btn = document.getElementById('btn-save-item');
+  const savingEl = document.getElementById('item-saving-msg');
+  const statusEl = document.getElementById('item-status');
+  btn.disabled = true;
+  statusEl.style.display = 'none';
+  savingEl.style.display = 'block';
+
+  const payload = Object.assign({
+    type: 'save_bom_item',
+    sku: currentSku,
+    item_name: itemName,
+    description: document.getElementById('description').value.trim(),
+    unit: document.getElementById('unit').value.trim(),
+    qty_per_unit: parseQty(document.getElementById('qty_per_unit').value),
+    lot_size: document.getElementById('lot_size').value,
+    supplier: supplierName,
+    unit_cost: document.getElementById('unit_cost').value,
+    lead_time: document.getElementById('lead_time').value.trim(),
+    notes: document.getElementById('bom_notes').value.trim()
+  }, newSupplierPayload);
+
+  try {
+    const res  = await fetch(APPS_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.status !== 'ok') throw new Error(json.msg || 'บันทึกไม่สำเร็จ');
+    statusEl.textContent = '✓ บันทึกวัสดุแล้ว';
+    statusEl.className = 'status-msg ok';
+    await loadSuppliersList();
+    await loadBOMForSku();
+    cancelEdit();
+  } catch(e) {
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.className = 'status-msg error';
+  } finally {
+    savingEl.style.display = 'none';
+    statusEl.style.display = 'block';
+    btn.disabled = false;
+  }
+}
+
+async function deleteBOMItemUI(itemName) {
+  if (!confirm('ลบวัสดุ "' + itemName + '" ออกจาก BOM นี้?')) return;
+  try {
+    await fetch(APPS_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ type: 'delete_bom_item', sku: currentSku, item_name: itemName })
+    });
+    await loadBOMForSku();
+  } catch(e) {
+    console.error('delete failed:', e);
+    alert('ลบไม่สำเร็จ กรุณาลองใหม่');
+  }
+}
+
+function renderCalculation() {
+  const qty = parseFloat(document.getElementById('requested_qty').value) || 0;
+  const tbody = document.getElementById('calc-tbody');
+  let grand = 0;
+
+  tbody.innerHTML = bomItems.map(it => {
+    const required = it.qty_per_unit * qty;
+    const lot = it.lot_size > 0 ? it.lot_size : 1;
+    const order = Math.ceil(required / lot) * lot;
+    const lineCost = order * it.unit_cost;
+    grand += lineCost;
+    return '<tr>' +
+      '<td>' + escHtml(it.item_name) + '</td>' +
+      '<td>' + required + ' ' + escHtml(it.unit) + '</td>' +
+      '<td>' + order + ' ' + escHtml(it.unit) + '</td>' +
+      '<td>' + lineCost.toFixed(2) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('grand-total').textContent = 'ต้นทุนรวมที่ต้องจ่าย: ' + grand.toFixed(2) + ' บาท';
+}
+
+async function generateBOMPdf() {
+  if (!currentSku) { alert('กรุณาเลือก SKU ก่อน'); return; }
+  const qty = parseFloat(document.getElementById('requested_qty').value) || 0;
+  if (!qty) { alert('กรุณากรอกจำนวนที่ต้องการผลิตก่อน'); return; }
+
+  const btn = document.getElementById('btn-gen-pdf');
+  const savingEl = document.getElementById('pdf-saving-msg');
+  const statusEl = document.getElementById('pdf-status');
+  const linkEl = document.getElementById('pdf-link');
+  btn.disabled = true;
+  statusEl.style.display = 'none';
+  linkEl.style.display = 'none';
+  savingEl.style.display = 'block';
+
+  try {
+    const res  = await fetch(APPS_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        type: 'generate_bom_pdf',
+        sku: currentSku,
+        product_name: currentProductName,
+        requested_qty: qty
+      })
+    });
+    const json = await res.json();
+    if (json.status !== 'ok') throw new Error(json.msg || 'สร้าง PDF ไม่สำเร็จ');
+    statusEl.textContent = '✓ สร้างเอกสารเรียบร้อย';
+    statusEl.className = 'status-msg ok';
+    linkEl.href = json.pdf_url;
+    linkEl.style.display = 'block';
+  } catch(e) {
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.className = 'status-msg error';
+  } finally {
+    savingEl.style.display = 'none';
+    statusEl.style.display = 'block';
+    btn.disabled = false;
+  }
+}
+
+(async function() {
+  await Promise.all([loadSkuList(), loadSuppliersList()]);
+})();
+</script>
+</body>
+</html>
