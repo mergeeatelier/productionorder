@@ -10,7 +10,9 @@
 body{font-family:'Sarabun',sans-serif;background:#f5f5f0;color:#1a1a2e;font-size:15px;min-height:100vh}
 
 /* ── Header ── */
-.page-header{padding:20px 28px 16px;background:#1a1a2e;color:#fff}
+.page-header{padding:20px 28px 16px;background:#1a1a2e;color:#fff;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.bom-link-btn{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:12px;font-weight:700;padding:8px 16px;border-radius:20px;text-decoration:none;white-space:nowrap;letter-spacing:.02em}
+.bom-link-btn:hover{background:rgba(255,255,255,.18)}
 .eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:4px}
 .page-header h1{font-size:22px;font-weight:700}
 .pid-badge{display:inline-block;background:rgba(181,134,42,.22);border:1px solid rgba(181,134,42,.45);color:#f0d080;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;margin-top:8px;letter-spacing:.06em}
@@ -173,9 +175,12 @@ input[type=file]{display:none}
 <body>
 
 <div class="page-header">
-  <div class="eyebrow">MERGEE</div>
-  <h1>Production Order</h1>
-  <div class="pid-badge" id="pid-badge">กำลังโหลด…</div>
+  <div>
+    <div class="eyebrow">MERGEE</div>
+    <h1>Production Order</h1>
+    <div class="pid-badge" id="pid-badge">กำลังโหลด…</div>
+  </div>
+  <a class="bom-link-btn" href="https://mergeeatelier.github.io/productionbom/bom.html" target="_blank" rel="noopener">Bill of Materials</a>
 </div>
 
 <div class="body">
